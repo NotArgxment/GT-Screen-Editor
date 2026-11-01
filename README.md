@@ -1,7 +1,6 @@
-Screen Editor (Minecraft Forge 1.20.1)
-Open index.html in your browser (no server or internet connection needed).
+# Screen Editor (Minecraft Forge 1.20.1)
 
-Photoshop-style interface:
+## Photoshop-style interface:
 - Toolbar (left): click an icon to add that element to the canvas.
 - Options bar: X/Y/W/H of the selected element and align buttons relative to the screen.
 - Rulers, 8 px grid, cursor coordinates and zoom (Ctrl+wheel).
@@ -9,7 +8,7 @@ Photoshop-style interface:
 - Properties / Screen / Code panel.
 - Edit > Undo / Redo (Ctrl+Z / Ctrl+Y). Export/Import JSON; autosaved in the browser.
 
-Importing Java:
+## Importing Java:
 - Paste a Screen class anywhere in the editor (Ctrl+V), drop a .java file on the window, or use File > Import Java...
 - render() and init() are converted into layers: fill, fillGradient, renderOutline, drawString/drawCenteredString, drawWordWrap,
   blit, renderItem, entity, tooltip zones, Button/ExtendedButton, EditBox, MultiLineEditBox, Checkbox, ForgeSlider, CycleButton, ImageButton.
@@ -19,11 +18,12 @@ Importing Java:
 - if/else branches are flattened, so mutually exclusive texts can end up overlapping on the canvas; delete or move the extras.
 - Choose "Replace" or "Add to current design". The import is one undo step (Ctrl+Z).
 
-Elements: Rectangle, Gradient, Outline, Progress bar, Vanilla panel, Text, Wrapped text, Texture, Item (with count),
+## Elements: 
+Rectangle, Gradient, Outline, Progress bar, Vanilla panel, Text, Wrapped text, Texture, Item (with count),
 Slot, Entity (player), Button, Image button, Cycle button, Slider (ForgeSlider), Text field, Text area,
 Checkbox and Tooltip zone.
 
-Notes:
+## Notes:
 - Buttons, text fields, sliders, etc. are vanilla widgets and are drawn on top of everything else.
 - A button's action runs on the client; to affect the machine you need a packet sent to the server.
 - If the window is resized, init() recreates the widgets and the text typed into EditBoxes is lost.
