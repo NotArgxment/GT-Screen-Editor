@@ -1,3 +1,4 @@
+Made with Claude Sonnet 5.5
 # Screen Editor (Minecraft Forge 1.20.1)
 
 ## Photoshop-style interface:
