@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Screen Editor</title>
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <div id="menubar">
+      <div class="appicon" title="Screen Editor">Se</div>
+      <div id="menus"></div>
+      <div class="mb-title">Screen Editor <span>Minecraft Forge 1.20.1</span></div>
+    </div>
+
+    <div id="options">
+      <div class="opt-tool"><span id="opt-ic"></span><b id="opt-name">No selection</b></div>
+      <span class="osep"></span>
+      <label class="ofield">X <input type="number" id="o-x" step="1"></label>
+      <label class="ofield">Y <input type="number" id="o-y" step="1"></label>
+      <label class="ofield">W <input type="number" id="o-w" step="1"></label>
+      <label class="ofield">H <input type="number" id="o-h" step="1"></label>
+      <span class="osep"></span>
+      <div id="aligns"></div>
+      <span class="spacer"></span>
+      <label class="octl">Grid <input type="checkbox" id="grid" checked></label>
+      <label class="octl">Rulers <input type="checkbox" id="rulers" checked></label>
+      <label class="octl">Zoom <input type="range" id="zoom" min="2" max="8" value="4"><output id="zoomv">4×</output></label>
+    </div>
+
+    <div id="work">
+      <nav id="toolbar" aria-label="Tools"></nav>
+
+      <section id="center">
+        <div id="doctab"><span class="dt" id="doctitle">MyScreen.java</span></div>
+        <div id="canvas-area">
+          <div id="corner"></div>
+          <canvas id="ruler-h"></canvas>
+          <canvas id="ruler-v"></canvas>
+          <div id="stage-wrap"><div id="stage"></div></div>
+        </div>
+        <div id="status">
+          <span id="zoompct"></span>
+          <span id="dims"></span>
+          <span class="hints">Drag = move · corner = resize · arrow keys 1 px (Shift 8) · Del · Ctrl+D · Ctrl+Z/Y · Ctrl+wheel = zoom</span>
+          <span id="pos"></span>
+        </div>
+      </section>
+
+      <aside id="right">
+        <section class="panel" id="p-props">
+          <header class="phead">
+            <nav id="tabs">
+              <button data-tab="props" class="on">Properties</button>
+              <button data-tab="panel">Screen</button>
+              <button data-tab="code">Code</button>
+            </nav>
+          </header>
+          <div class="pbody">
+            <div id="tab-props" class="tab on"></div>
+            <div id="tab-panel" class="tab"></div>
+            <div id="tab-code" class="tab">
+              <div class="row">
+                <button id="btn-copy" class="primary">Copy code</button>
+                <button id="btn-java">Download .java</button>
+              </div>
+              <div class="row"><button id="btn-paste-java">Paste / import Java…</button></div>
+              <textarea id="code" readonly spellcheck="false"></textarea>
+            </div>
+          </div>
+        </section>
+        <section class="panel" id="p-layers">
+          <header class="phead"><span class="ptitle">Layers</span><span class="count" id="layer-count">0</span></header>
+          <ul id="layers"></ul>
+          <footer class="pfoot" id="layer-tools"></footer>
+        </section>
+      </aside>
+    </div>
+    <input type="file" id="file-json" accept=".json" hidden>
+    <input type="file" id="file-java" accept=".java,text/plain" hidden>
+
+    <div id="modal" class="modal" hidden>
+      <div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlg-title">
+        <header class="phead"><span class="ptitle" id="dlg-title">Import Java</span><button id="dlg-x" class="dlg-close" title="Close">✕</button></header>
+        <div class="dlg-body">
+          <textarea id="java-in" spellcheck="false" placeholder="Paste your Screen class here (Ctrl+V)…"></textarea>
+          <div id="java-log"></div>
+          <div class="dlg-opts">
+            <label><input type="radio" name="imode" value="replace" checked> Replace current design</label>
+            <label><input type="radio" name="imode" value="add"> Add to current design</label>
+            <button id="java-file">Open .java file…</button>
+          </div>
+        </div>
+        <footer class="dlg-foot"><button id="dlg-cancel">Cancel</button><button id="dlg-ok" class="primary" disabled>Import</button></footer>
+      </div>
+    </div>
+    <script src="java-import.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
