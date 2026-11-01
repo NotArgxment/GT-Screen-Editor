@@ -86,7 +86,8 @@
           <textarea id="java-in" spellcheck="false" placeholder="Paste your Screen class here (Ctrl+V)…"></textarea>
           <div id="java-log"></div>
           <div class="dlg-opts">
-            <label><input type="radio" name="imode" value="replace" checked> Replace current design</label>
+            <label><input type="radio" name="imode" value="source" checked> Edit in place (keeps all your code)</label>
+            <label><input type="radio" name="imode" value="replace"> Rebuild from layers</label>
             <label><input type="radio" name="imode" value="add"> Add to current design</label>
             <button id="java-file">Open .java file…</button>
           </div>
@@ -95,6 +96,7 @@
       </div>
     </div>
     <script src="java-import.js"></script>
+    <script src="java-source.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

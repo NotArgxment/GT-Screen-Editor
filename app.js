@@ -204,8 +204,8 @@ function makeEl(type) {
       h: 8,
       color: "#4aa3ff",
       color2: "#000000",
-      cur: "machine.getProgress()",
-      max: "machine.getMaxProgress()",
+      cur: "60",
+      max: "100",
       dir: "horizontal",
       pv: 60,
     },
@@ -213,7 +213,7 @@ function makeEl(type) {
     text: {
       text: "Text",
       dynamic: false,
-      expr: "machine.getSomething()",
+      expr: "String.valueOf(123)",
       sample: "123",
       color: "#ffffff",
       shadow: false,
@@ -388,11 +388,13 @@ const sel = () => state.elements.find((e) => e.id === state.sel);
 
 /* ===== History (undo / redo) ===== */
 const hist = { stack: [], i: -1, t: null };
+const canEdit = (e, k) => !e.src || e.src.edit.includes(k);
 const snap = () =>
   JSON.stringify({
     panel: state.panel,
     elements: state.elements,
     nextId: state.nextId,
+    source: state.source || null,
   });
 function commit() {
   clearTimeout(hist.t);
@@ -416,6 +418,7 @@ function restore(s) {
   state.panel = o.panel;
   state.elements = o.elements;
   state.nextId = o.nextId;
+  state.source = o.source || null;
   if (!sel()) state.sel = null;
   renderPanelTab();
   renderAll();
@@ -682,11 +685,11 @@ function startDrag(ev, e, resize) {
     const dx = Math.round((m.clientX - sx) / z),
       dy = Math.round((m.clientY - sy) / z);
     if (resize) {
-      if (ow !== undefined) e.w = Math.max(1, ow + dx);
-      if (oh !== undefined) e.h = Math.max(1, oh + dy);
+      if (ow !== undefined && canEdit(e, "w")) e.w = Math.max(1, ow + dx);
+      if (oh !== undefined && canEdit(e, "h")) e.h = Math.max(1, oh + dy);
     } else {
-      e.x = ox + dx;
-      e.y = oy + dy;
+      if (canEdit(e, "x")) e.x = ox + dx;
+      if (canEdit(e, "y")) e.y = oy + dy;
     }
     renderStage();
     renderProps();
@@ -904,6 +907,12 @@ function reorder(mode) {
   const a = state.elements,
     i = a.findIndex((e) => e.id === state.sel);
   if (i < 0) return;
+  if (a[i].src) {
+    alert(
+      "Layer order follows your code order, so it cannot be changed for imported elements. Use File > Detach from source to rebuild the class from layers.",
+    );
+    return;
+  }
   const [e] = a.splice(i, 1);
   const j =
     mode === "front"
@@ -921,6 +930,9 @@ function toggle(k) {
   renderAll();
 }
 function remove(id) {
+  const d = state.elements.find((e) => e.id === id);
+  if (d && d.src && state.source)
+    state.source.removed.push({ src: d.src, name: d.name || "" });
   state.elements = state.elements.filter((e) => e.id !== id);
   if (state.sel === id) state.sel = null;
   renderAll();
@@ -929,6 +941,9 @@ function dup() {
   const e = sel();
   if (!e) return;
   const c = { ...e, id: state.nextId++, x: e.x + 4, y: e.y + 4, locked: false };
+  delete c.src;
+  delete c.orig;
+  delete c.cond;
   if (c.name) c.name += "2";
   state.elements.push(c);
   state.sel = c.id;
@@ -989,6 +1004,7 @@ function renderOptions() {
     i.disabled =
       !e ||
       e[k] === undefined ||
+      !canEdit(e, k) ||
       (e.type === "entity" && (k === "w" || k === "h"));
     if (i !== document.activeElement)
       i.value = e && e[k] !== undefined ? e[k] : "";
@@ -1096,22 +1112,26 @@ function renderProps() {
   TYPES[e.type].fields.forEach((k) => {
     const [lab, kind, opts] = FIELD[k];
     const key = k === "img" ? "imgData" : k;
-    box.append(
-      fieldRow(
-        lab,
-        kind,
-        e[key],
-        (v) => {
-          e[key] = v;
-          renderStage();
-          renderLayers();
-          renderOptions();
-          renderCode();
-          save();
-        },
-        opts,
-      ),
+    const row = fieldRow(
+      lab,
+      kind,
+      e[key],
+      (v) => {
+        e[key] = v;
+        renderStage();
+        renderLayers();
+        renderOptions();
+        renderCode();
+        save();
+      },
+      opts,
     );
+    if (!canEdit(e, k)) {
+      row.classList.add("locked-src");
+      row.querySelectorAll("input,select").forEach((i) => (i.disabled = true));
+      row.title = "This value is computed in your code and is kept as is.";
+    }
+    box.append(row);
   });
   const hints = {
     text: 'Dynamic: uses the Java expression (returns a String or Component). With "center", X is the center of the text.',
@@ -1132,6 +1152,14 @@ function renderProps() {
     slot: "Only draws the slot background; it is not a real inventory slot (that requires an AbstractContainerScreen/Menu).",
     panel: "Reproduces the gray vanilla container background using rectangles.",
   };
+  if (e.src && e.cond)
+    box.append(
+      el(
+        "p",
+        { class: "hint" },
+        "Conditional in your code: if (" + e.cond + ")",
+      ),
+    );
   if (hints[e.type]) box.append(el("p", { class: "hint" }, hints[e.type]));
   box.append(
     el(
@@ -1147,21 +1175,26 @@ function renderPanelTab() {
   const box = $("#tab-panel");
   const P = state.panel;
   box.innerHTML = "";
-  const add = (lab, key, kind, opts) =>
-    box.append(
-      fieldRow(
-        lab,
-        kind,
-        P[key],
-        (v) => {
-          P[key] = v;
-          renderStage();
-          renderCode();
-          save();
-        },
-        opts,
-      ),
+  const add = (lab, key, kind, opts) => {
+    const row = fieldRow(
+      lab,
+      kind,
+      P[key],
+      (v) => {
+        P[key] = v;
+        renderStage();
+        renderCode();
+        save();
+      },
+      opts,
     );
+    if (state.source && !state.source.pedit.includes(key)) {
+      row.classList.add("locked-src");
+      row.querySelectorAll("input,select").forEach((i) => (i.disabled = true));
+      row.title = "Defined in your code; kept as is.";
+    }
+    box.append(row);
+  };
   box.append(el("h2", {}, "Size and background"));
   add("Width", "w", "num");
   add("Height", "h", "num");
@@ -1188,16 +1221,9 @@ function renderPanelTab() {
 }
 
 /* ===== Code generator ===== */
-function generate() {
-  const P = state.panel,
-    E = state.elements;
-  const imp = new Set([
-    "net.minecraft.client.gui.GuiGraphics",
-    "net.minecraft.client.gui.screens.Screen",
-    "net.minecraft.network.chat.Component",
-    "net.minecraftforge.api.distmarker.Dist",
-    "net.minecraftforge.api.distmarker.OnlyIn",
-  ]);
+/* Builds the Java snippets for a list of elements. o.L/o.T = origin helpers for render code, o.Li/o.Ti for init code, o.src = existing source (to avoid name clashes). */
+function genParts(E, o = {}) {
+  const imp = new Set();
   const consts = [],
     fields = [],
     init = [],
@@ -1205,21 +1231,23 @@ function generate() {
     post = [];
   let ratio = false,
     texN = 0;
-  const L = (n) => off("left", n),
-    T = (n) => off("top", n);
-  const cls = ident(P.className, "MyScreen");
-  const mFull = (P.machine || "").trim(),
-    mSimple = mFull ? mFull.split(".").pop() : "";
-  if (mFull.includes(".")) imp.add(mFull);
+  const L0 = o.L || ((n) => off("left", n)),
+    T0 = o.T || ((n) => off("top", n)),
+    Li = o.Li || L0,
+    Ti = o.Ti || T0;
+  const taken = (n) => !!o.src && new RegExp("\\b" + n + "\\b").test(o.src);
   const used = new Set();
   const fname = (e, fb) => {
     let n = ident(e.name, fb);
-    while (used.has(n)) n += "_";
+    while (used.has(n) || taken(n)) n += "_";
     used.add(n);
     return n;
   };
   const tex = (e) => {
-    const c = "TEX_" + ++texN;
+    let c;
+    do {
+      c = "TEX_" + ++texN;
+    } while (taken(c));
     imp.add("net.minecraft.resources.ResourceLocation");
     consts.push(
       `private static final ResourceLocation ${c} = new ResourceLocation(${jstr(e.path)});`,
@@ -1261,6 +1289,8 @@ function generate() {
   };
 
   E.forEach((e, i) => {
+    const L = isWidget(e) ? Li : L0,
+      T = isWidget(e) ? Ti : T0;
     const x = L(e.x),
       y = T(e.y),
       xr = L(e.x + e.w),
@@ -1443,7 +1473,24 @@ function generate() {
       }
     }
   });
+  return { imp, consts, fields, init, rend, post, ratio };
+}
 
+function generateScratch() {
+  const P = state.panel,
+    E = state.elements;
+  const { imp, consts, fields, init, rend, post, ratio } = genParts(E);
+  [
+    "net.minecraft.client.gui.GuiGraphics",
+    "net.minecraft.client.gui.screens.Screen",
+    "net.minecraft.network.chat.Component",
+    "net.minecraftforge.api.distmarker.Dist",
+    "net.minecraftforge.api.distmarker.OnlyIn",
+  ].forEach((x) => imp.add(x));
+  const cls = ident(P.className, "MyScreen");
+  const mFull = (P.machine || "").trim(),
+    mSimple = mFull ? mFull.split(".").pop() : "";
+  if (mFull.includes(".")) imp.add(mFull);
   const o = [];
   o.push(`package ${P.pkg};`, "");
   [...imp].sort().forEach((s) => o.push(`import ${s};`));
@@ -1519,8 +1566,39 @@ function generate() {
   o.push("}", "");
   return o.join("\n");
 }
+const generate = () =>
+  state.source ? generateFromSource() : generateScratch();
+function detachSource() {
+  if (!state.source) return;
+  if (
+    !confirm(
+      "Rebuild the class from the layers? Code the editor does not model (variables, conditions, logic) will be lost.",
+    )
+  )
+    return;
+  commit();
+  state.elements.forEach((e) => {
+    delete e.src;
+    delete e.orig;
+    delete e.cond;
+  });
+  state.source = null;
+  renderPanelTab();
+  renderAll();
+  commit();
+}
 function renderCode() {
   $("#code").value = generate();
+  let n = $("#gen-note");
+  if (!n) {
+    n = el("p", { class: "hint", id: "gen-note" });
+    $("#code").before(n);
+  }
+  n.textContent = state.source
+    ? lastGenWarn.length
+      ? lastGenWarn.join(" ")
+      : "Editing your class in place: only the parts you changed are rewritten."
+    : "";
 }
 
 /* ===== Global ===== */
@@ -1614,6 +1692,7 @@ const MENUS = [
       ["Import JSON…", () => $("#file-json").click()],
       ["Import Java…", () => openImport(), "Ctrl+V"],
       ["Export JSON", exportJson],
+      ["Detach from source", detachSource],
       "-",
       ["Copy code", copyCode],
       ["Download .java", downloadJava],
